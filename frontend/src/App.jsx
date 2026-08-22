@@ -17,25 +17,44 @@ import {
 import confetti from 'canvas-confetti';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('auditor');
+  const [activeTab, setActiveTab] = useState('ngo');
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [demoState, setDemoState] = useState('initial'); 
   const [aiStep, setAiStep] = useState(0);
+  const [auditResult, setAuditResult] = useState(null);
 
   const handleMouseMove = (e) => {
     setMousePos({ x: e.clientX, y: e.clientY });
   };
 
-  const runVerification = () => {
+  const handleRealUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setActiveTab('auditor');
     setDemoState('scanning');
     setAiStep(1);
-    
-    setTimeout(() => setAiStep(2), 800);
-    setTimeout(() => setAiStep(3), 1600);
-    setTimeout(() => {
-      setDemoState('flagged');
-      setAiStep(4);
-    }, 2400);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("budget_limit", 40000.0);
+
+    try {
+        setTimeout(() => setAiStep(2), 800);
+        setTimeout(() => setAiStep(3), 1600);
+        
+        const response = await fetch("http://127.0.0.1:8000/api/audit", {
+            method: "POST",
+            body: formData
+        });
+        const result = await response.json();
+        
+        setAuditResult(result);
+        setAiStep(4);
+        setDemoState('flagged');
+    } catch (error) {
+        setDemoState('error');
+    }
   };
 
   const handleApprove = () => {
@@ -180,29 +199,24 @@ export default function App() {
             <p className="text-sm text-slate-400 mb-6">Upload vendor invoice and equipment receipt to initiate milestone release.</p>
 
             {demoState === 'initial' ? (
-              <div 
-                onClick={() => {
-                  runVerification();
-                  setActiveTab('auditor');
-                }}
-                className="group cursor-pointer border-2 border-dashed border-cyan-500/40 hover:border-cyan-400 rounded-2xl p-12 text-center transition bg-slate-900/40 hover:bg-slate-900/80 relative"
-              >
+              <label className="group cursor-pointer border-2 border-dashed border-cyan-500/40 hover:border-cyan-400 rounded-2xl p-12 text-center transition bg-slate-900/40 hover:bg-slate-900/80 relative block w-full">
+                <input type="file" className="hidden" accept=".pdf" onChange={handleRealUpload} />
                 <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 mx-auto flex items-center justify-center mb-4 group-hover:scale-110 transition shadow-[0_0_25px_rgba(6,182,212,0.3)]">
                   <UploadCloud className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-1">Click to Simulate Invoice Upload</h3>
-                <p className="text-xs text-slate-400 font-mono">Simulates: <span className="text-cyan-400">INV_SchoolKits_Haryana.pdf</span> (Contains inflated amount ₹47,500)</p>
+                <h3 className="text-lg font-bold text-white mb-1">Click to Upload PDF Invoice</h3>
+                <p className="text-xs text-slate-400 font-mono">Connects to Python AI Backend</p>
                 <div className="mt-6 inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-cyan-500/20 text-cyan-300 text-xs font-bold border border-cyan-500/40">
                   <Sparkles className="w-4 h-4 animate-spin" />
                   <span>Auto-Compute SHA-256 & Route to AI</span>
                 </div>
-              </div>
+              </label>
             ) : (
               <div className="p-8 rounded-2xl bg-slate-900/80 border border-slate-700 text-center space-y-4">
                 <CheckCircle2 className="w-14 h-14 text-emerald-400 mx-auto" />
                 <h3 className="text-xl font-bold text-white">Invoice Telemetry Anchored to IPFS</h3>
                 <p className="font-mono text-xs text-slate-400 break-all bg-black/50 p-3 rounded-lg border border-slate-800">
-                  IPFS Hash: QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco
+                  IPFS Hash: {auditResult?.invoice_hash || "QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco"}
                 </p>
                 <button 
                   onClick={() => setActiveTab('auditor')}
@@ -241,11 +255,13 @@ export default function App() {
                   {aiStep >= 3 && (
                     <p className="text-purple-300">&gt; Running Anomaly Detection Model: Comparing claimed INR vs. milestone cap...</p>
                   )}
-                  {aiStep >= 4 && (
+                  {aiStep >= 4 && auditResult && (
                     <div className="p-3 bg-red-950/40 border border-red-500/40 rounded-lg text-red-400 space-y-1">
                       <p className="font-bold">&gt; [ALERT] BUDGET DISCREPANCY CONFIRMED</p>
-                      <p>&gt; Invoiced: ₹47,500 | Limit: ₹40,000</p>
-                      <p>&gt; Quantity Discrepancy: Expected 100 kits, Found 150</p>
+                      <p>&gt; Invoiced: ₹{auditResult.claimed_amount} | Limit: ₹{auditResult.allocated_limit}</p>
+                      {auditResult.issues.map((issue, idx) => (
+                        <p key={idx}>&gt; {issue}</p>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -265,12 +281,6 @@ export default function App() {
                   <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">
                     Trigger an invoice ingestion event from the NGO tab to watch real-time OCR and semantic cross-referencing.
                   </p>
-                  <button 
-                    onClick={runVerification}
-                    className="px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold text-sm shadow-[0_0_20px_rgba(6,182,212,0.4)]"
-                  >
-                    Execute Test Scan Now
-                  </button>
                 </div>
               )}
 
@@ -285,26 +295,26 @@ export default function App() {
                 </div>
               )}
 
-              {(demoState === 'flagged' || demoState === 'rejected' || demoState === 'approved') && (
+              {(demoState === 'flagged' || demoState === 'rejected' || demoState === 'approved') && auditResult && (
                 <div>
                   <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center space-x-2">
                       <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping" />
-                      <h3 className="text-xl font-bold text-white">Forensic Risk Score: 94/100</h3>
+                      <h3 className="text-xl font-bold text-white">Forensic Risk Score: {auditResult.risk_score}/100</h3>
                     </div>
                     <span className="px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 font-mono text-xs font-bold border border-rose-500/30">
-                      HIGH ANOMALY RISK
+                      {auditResult.risk_level} ANOMALY RISK
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
                       <p className="text-xs font-mono text-slate-400">Escrow Milestone Budget</p>
-                      <p className="text-2xl font-bold text-emerald-400 mt-1">₹40,000</p>
+                      <p className="text-2xl font-bold text-emerald-400 mt-1">₹{auditResult.allocated_limit}</p>
                     </div>
                     <div className="bg-slate-900/80 p-4 rounded-xl border border-rose-500/30">
                       <p className="text-xs font-mono text-slate-400">Invoice Extracted Amount</p>
-                      <p className="text-2xl font-bold text-rose-400 mt-1">₹47,500</p>
+                      <p className="text-2xl font-bold text-rose-400 mt-1">₹{auditResult.claimed_amount}</p>
                     </div>
                   </div>
 
@@ -314,8 +324,9 @@ export default function App() {
                       <span>Smart Contract Constraint Violations Detected:</span>
                     </div>
                     <ul className="list-disc list-inside space-y-1 text-xs text-slate-300 font-mono pl-2">
-                      <li>Over-claim of ₹7,500 (+18.75% above approved allocation).</li>
-                      <li>Item count mismatch: 150 kits detected (Milestone bounded to 100).</li>
+                      {auditResult.issues.map((issue, idx) => (
+                        <li key={idx}>{issue}</li>
+                      ))}
                       <li>Deterministic Rule: Auto-Release blocked by Solidity modifier.</li>
                     </ul>
                   </div>
@@ -326,7 +337,7 @@ export default function App() {
                     </div>
                   ) : demoState === 'approved' ? (
                     <div className="p-4 bg-slate-900 rounded-xl border border-emerald-500 text-center font-mono text-sm text-emerald-400 font-bold">
-                      [OVERRIDE APPROVED]: ₹40,000 DISBURSED VIA TX #0x9df4...321
+                      [OVERRIDE APPROVED]: ₹{auditResult.allocated_limit} DISBURSED VIA TX #0x9df4...321
                     </div>
                   ) : (
                     <div className="flex space-x-4">
