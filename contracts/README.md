@@ -1,57 +1,52 @@
-# Sample Hardhat 3 Project (`mocha` and `ethers`)
+# ChainShield contract (Soroban / Stellar)
 
-This project showcases a Hardhat 3 project using `mocha` for tests and the `ethers` library for Ethereum interactions.
+The real on-chain component. See [src/lib.rs](src/lib.rs). Read
+[../docs/ORACLE_TRUST.md](../docs/ORACLE_TRUST.md) before presenting this —
+it explains what the `attestor` key does and does not guarantee.
 
-To learn more about Hardhat 3, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3](https://hardhat.org/hardhat3-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+## What it does
 
-## Project Overview
+- `create_grant` — a funder deposits real tokens (a Stellar Asset Contract)
+  into escrow against a named set of milestones. This is real custody, not
+  simulated.
+- `submit_claim` — the configured `attestor` submits a claim's document hash,
+  amount, and risk score for a milestone. Requires `attestor.require_auth()`
+  — see the trust-assumption doc. Duplicate document hashes are blocked
+  globally (`DocSeen`), across grants/funders, without exposing either
+  funder's claim details to the other.
+- Claims at or above `risk_threshold` get a `challenge_secs` window during
+  which the funder may `freeze` them; below it, they become settleable
+  immediately. `settle` pays the milestone amount to the NGO once the window
+  has passed and the claim hasn't been frozen.
+- `get_stats` returns aggregate counters (grants, escrowed, released,
+  auto-released, flagged, duplicates blocked, frozen) for a dashboard.
 
-This example project includes:
+## Build & test
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using `mocha` and ethers.js
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
-
-## Usage
-
-### Running Tests
-
-To run all the tests in the project, execute the following command:
-
-```shell
-npx hardhat test
+```sh
+stellar contract build      # NOT `cargo build` — see docs/FACTS.md
+cargo test -p chainshield
 ```
 
-You can also selectively run the Solidity or `mocha` tests:
+## Deploying to testnet
 
-```shell
-npx hardhat test solidity
-npx hardhat test mocha
-```
+1. Build the Wasm (`stellar contract build`).
+2. Deploy: `stellar contract deploy --wasm target/wasm32v1-none/release/chainshield.wasm --network testnet`
+3. Derive the SAC token address for the asset you're testing with:
+   `stellar contract id asset --network testnet --asset USDC:<issuer>`
+   (the `token` argument to `create_grant` is this contract address, not a
+   `G...` issuer account).
+4. `init` with your attestor address, a `risk_threshold`, and
+   `challenge_secs` (use a short value like 45s for demos; production should
+   use something like 259200 = 72h, per [scripts/demo.sh](scripts/demo.sh)).
+5. Verify a grant creation, a settlement, and a cross-funder duplicate
+   rejection in Stellar Expert before wiring the frontend/backend to a live
+   contract ID.
 
-### Make a deployment to Sepolia
+## Backend wiring
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
-
-To run the deployment to a local chain:
-
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
-```
-
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
-
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
-
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
-
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
-```
-
-After setting the variable, you can run the deployment with the Sepolia network:
-
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
-```
+[../backend/chain_client.py](../backend/chain_client.py) is the only backend
+module that talks to this contract. It's inert until
+`CHAINSHIELD_CONTRACT_ID` and `CHAINSHIELD_ATTESTOR_SECRET` are set — see
+that file's docstring for what's left to wire (grant/milestone lookup) before
+enabling live anchoring end-to-end.
