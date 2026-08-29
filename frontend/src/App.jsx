@@ -43,7 +43,7 @@ export default function App() {
         setTimeout(() => setAiStep(2), 800);
         setTimeout(() => setAiStep(3), 1600);
         
-        const response = await fetch("http://127.0.0.1:8000/api/audit", {
+        const response = await fetch("https://chainshield-backend.zopcloud.zop.dev/api/audit", {
             method: "POST",
             body: formData
         });
