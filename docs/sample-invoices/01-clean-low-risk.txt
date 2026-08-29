@@ -1,0 +1,10 @@
+Invoice #INV-2026-0114
+Vendor: Sunrise Medical Supplies
+Billed to: Global Health Initiative — Vaccine Cold Storage Project
+
+Amount: INR 14,275.50
+
+Items:
+- 6 vaccine cold-storage units
+- Installation and calibration service
+- 12-month maintenance contract

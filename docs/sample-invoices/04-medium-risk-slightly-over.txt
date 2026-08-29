@@ -1,0 +1,14 @@
+Invoice #INV-2026-0221
+Vendor: EduCare Foundation Supplies
+Billed to: Digital Literacy Program — Batch 3
+
+Amount: INR 48,750.25
+
+Items:
+- 15 refurbished laptops
+- Wireless router and networking cables
+- Teacher training materials
+
+Note: with budget_limit=40000 this trips only the "amount exceeds budget"
+flag (not round-number), landing around MEDIUM risk — good for
+demonstrating the human-review gate without maxing out risk_score.

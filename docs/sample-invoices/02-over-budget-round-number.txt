@@ -1,0 +1,15 @@
+Invoice #INV-2026-0187
+Vendor: QuickBuild Contractors
+Billed to: Smart Classroom Rural Haryana — Milestone 1
+
+Amount: INR 90,000
+
+Items:
+- Cement bags (200 units)
+- Steel reinforcement rods
+- Exterior paint
+- Labor charges
+
+Note: submit with budget_limit=40000 in the upload form to see this trip
+the "amount exceeds milestone budget" AND "round-number amount" flags
+(risk_score should land at HIGH).

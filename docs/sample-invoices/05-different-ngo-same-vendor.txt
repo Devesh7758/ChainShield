@@ -1,0 +1,15 @@
+Invoice #INV-2026-0309
+Vendor: QuickBuild Contractors
+Billed to: CleanWater Alliance — Filtration Pumps Phase 2
+
+Amount: INR 62,000
+
+Items:
+- Filtration pump units
+- Piping and fittings
+- Installation labor
+
+Note: submit this with a DIFFERENT ngo_id than files 02/03 (e.g. ngo_beta
+instead of ngo_alpha) to confirm near-duplicate detection is correctly
+scoped per-NGO and does NOT fire across unrelated projects, even though
+the vendor name matches file 02.
