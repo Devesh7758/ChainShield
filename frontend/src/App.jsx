@@ -15,6 +15,14 @@ import {
   History
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { ethers } from 'ethers';
+
+const ESCROW_CONTRACT_ADDRESS = "0x892a...c014"; 
+
+const ESCROW_ABI = [
+  "function releaseMilestone(bytes32 invoiceHash, uint256 amount) external",
+  "function emergencyOverride(bytes32 invoiceHash) external"
+];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('ngo');
@@ -57,14 +65,38 @@ export default function App() {
     }
   };
 
-  const handleApprove = () => {
-    setDemoState('approved');
-    confetti({
-      particleCount: 120,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#06b6d4', '#10b981', '#8b5cf6']
-    });
+  const handleApprove = async () => {
+    try {
+      if (!window.ethereum) {
+        alert("Please install MetaMask or a Web3 wallet to execute on-chain transactions!");
+        return;
+      }
+
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      const contract = new ethers.Contract(ESCROW_CONTRACT_ADDRESS, ESCROW_ABI, signer);
+
+      const invoiceHashBytes = ethers.id(auditResult?.invoice_hash || "default_invoice");
+
+      setDemoState('submitting_tx');
+      const tx = await contract.emergencyOverride(invoiceHashBytes);
+      
+      await tx.wait();
+
+      setDemoState('approved');
+      confetti({
+        particleCount: 120,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#06b6d4', '#10b981', '#8b5cf6']
+      });
+    } catch (error) {
+      console.error("Blockchain execution failed:", error);
+      setDemoState('flagged');
+      alert("Transaction rejected or failed on-chain.");
+    }
   };
 
   return (
@@ -125,11 +157,11 @@ export default function App() {
         
         {activeTab === 'donor' && (
           <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-8">
-            <div className="md:col-span-7 glass-panel p-8 rounded-2xl border border-slate-700/60 shadow-2xl relative">
-              <div className="flex justify-between items-start mb-6">
+            <div className="md:col-span-7 glass-panel p-8 rounded-2xl border border-slate-700/60 shadow-2xl relative space-y-6">
+              <div className="flex justify-between items-start">
                 <div>
                   <span className="px-3 py-1 text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 rounded-full border border-cyan-500/30">
-                    CAMPAIGN #8904
+                    CAMPAIGN #8904 // MULTI-NGO SCALABILITY HUB
                   </span>
                   <h2 className="text-2xl font-bold mt-2 text-white">Smart Classroom Digital Kits</h2>
                   <p className="text-sm text-slate-400">Target: 100 Government Schools in Rural Haryana</p>
@@ -140,28 +172,34 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="space-y-2 mb-8">
+              <div className="space-y-2">
                 <div className="flex justify-between text-sm font-mono">
                   <span className="text-slate-400">Vault Balance Locked:</span>
                   <span className="text-cyan-300 font-bold">₹50,000 / ₹50,000 (100%)</span>
                 </div>
                 <div className="w-full h-3.5 bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-700">
-                  <div className="h-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.8)]" />
+                  <div className="h-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.8)] w-full" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-                  <p className="text-xs text-slate-400 font-mono">Total Donors</p>
-                  <p className="text-xl font-bold text-white mt-1">24 Wallets</p>
-                </div>
-                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-                  <p className="text-xs text-slate-400 font-mono">Released to Date</p>
-                  <p className="text-xl font-bold text-emerald-400 mt-1">₹0.00</p>
-                </div>
-                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-                  <p className="text-xs text-slate-400 font-mono">Gas Optim.</p>
-                  <p className="text-xl font-bold text-indigo-400 mt-1">L2 Arbitrum</p>
+              <div className="pt-2 border-t border-slate-800">
+                <p className="text-xs font-mono text-cyan-400 mb-3 uppercase tracking-wider">Social Impact & Scalability Metrics Framework</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <p className="text-[10px] text-slate-400 font-mono">Transparency Rate</p>
+                    <p className="text-lg font-bold text-emerald-400 mt-0.5">100%</p>
+                    <p className="text-[9px] text-slate-500 mt-0.5">Verifiable Proofs</p>
+                  </div>
+                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <p className="text-[10px] text-slate-400 font-mono">Fraud Prevention</p>
+                    <p className="text-lg font-bold text-cyan-400 mt-0.5">0 Deficits</p>
+                    <p className="text-[9px] text-slate-500 mt-0.5">AI Blocked Overages</p>
+                  </div>
+                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <p className="text-[10px] text-slate-400 font-mono">Verification Time</p>
+                    <p className="text-lg font-bold text-indigo-400 mt-0.5">42 ms</p>
+                    <p className="text-[9px] text-slate-500 mt-0.5">Avg Processing Speed</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -177,8 +215,8 @@ export default function App() {
                 </p>
                 <div className="p-3 bg-black/40 rounded-xl border border-slate-800 font-mono text-xs text-slate-400 space-y-1">
                   <p>Escrow Address: <span className="text-cyan-400">0x892a...c014</span></p>
-                  <p>Milestone Allocation: <span className="text-white">₹40,000</span></p>
-                  <p>Audit Status: <span className="text-amber-400">Awaiting Invoice</span></p>
+                  <p>Active Campaigns: <span className="text-white">12 NGOs / L2 Scaled</span></p>
+                  <p>Audit Status: <span className="text-emerald-400">Framework Active</span></p>
                 </div>
               </div>
 
@@ -295,7 +333,7 @@ export default function App() {
                 </div>
               )}
 
-              {(demoState === 'flagged' || demoState === 'rejected' || demoState === 'approved') && auditResult && (
+              {(demoState === 'flagged' || demoState === 'rejected' || demoState === 'approved' || demoState === 'submitting_tx') && auditResult && (
                 <div>
                   <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center space-x-2">
@@ -339,6 +377,10 @@ export default function App() {
                     <div className="p-4 bg-slate-900 rounded-xl border border-emerald-500 text-center font-mono text-sm text-emerald-400 font-bold">
                       [OVERRIDE APPROVED]: ₹{auditResult.allocated_limit} DISBURSED VIA TX #0x9df4...321
                     </div>
+                  ) : demoState === 'submitting_tx' ? (
+                    <div className="p-4 bg-slate-900 rounded-xl border border-cyan-500 text-center font-mono text-sm text-cyan-400 font-bold animate-pulse">
+                      [WEB3 PENDING]: Awaiting wallet signature & Polygon network confirmation...
+                    </div>
                   ) : (
                     <div className="flex space-x-4">
                       <button 
@@ -349,9 +391,10 @@ export default function App() {
                       </button>
                       <button 
                         onClick={handleApprove}
-                        className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm border border-slate-700 transition"
+                        className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm border border-slate-700 transition flex items-center justify-center space-x-2"
                       >
-                        Manual Admin Override
+                        <Unlock className="w-4 h-4 text-cyan-400" />
+                        <span>Manual Admin Override (Web3)</span>
                       </button>
                     </div>
                   )}
