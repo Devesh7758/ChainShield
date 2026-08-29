@@ -32,11 +32,46 @@ export default function App() {
   const [auditResult, setAuditResult] = useState(null);
 
   const [ledgerTransactions, setLedgerTransactions] = useState([
-    { txHash: "0x4f...9a12", ngo: "Global Health Init.", purpose: "Vaccine Cold Storage", claimed: "2,50,000", status: "RELEASED", statusColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" },
-    { txHash: "0x7d...b38c", ngo: "EduCare Foundation", purpose: "Laptops for Teachers", claimed: "85,000", status: "BLOCKED", statusColor: "text-rose-400 bg-rose-500/10 border-rose-500/30" },
-    { txHash: "0x2a...1f44", ngo: "CleanWater Alliance", purpose: "Filtration Pumps", claimed: "1,20,000", status: "RELEASED", statusColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" },
-    { txHash: "0x9c...e771", ngo: "Disaster Relief Org", purpose: "Emergency Tents", claimed: "5,00,000", status: "MANUAL REVIEW", statusColor: "text-amber-400 bg-amber-500/10 border-amber-500/30" }
+    { txHash: "0x4f...9a12", fullHash: "0x4f3a2b1c9a12", ngo: "Global Health Init.", purpose: "Vaccine Cold Storage", claimed: "2,50,000", status: "RELEASED", statusColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" },
+    { txHash: "0x7d...b38c", fullHash: "0x7d2e1f4ab38c", ngo: "EduCare Foundation", purpose: "Laptops for Teachers", claimed: "85,000", status: "BLOCKED", statusColor: "text-rose-400 bg-rose-500/10 border-rose-500/30" },
+    { txHash: "0x2a...1f44", fullHash: "0x2a9b8c7d1f44", ngo: "CleanWater Alliance", purpose: "Filtration Pumps", claimed: "1,20,000", status: "RELEASED", statusColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" },
+    { txHash: "0x9c...e771", fullHash: "0x9c1a2b3ce771", ngo: "Disaster Relief Org", purpose: "Emergency Tents", claimed: "5,00,000", status: "MANUAL REVIEW", statusColor: "text-amber-400 bg-amber-500/10 border-amber-500/30" }
   ]);
+
+  useEffect(() => {
+    const fetchRealBlockchainLedger = async () => {
+      try {
+        if (!window.ethereum) return;
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const contract = new ethers.Contract(ESCROW_CONTRACT_ADDRESS, ESCROW_ABI, provider);
+
+        const filter = contract.filters.MilestoneReleased(); 
+        const logs = await provider.getLogs({
+          ...filter,
+          fromBlock: 0,
+          toBlock: 'latest'
+        });
+
+        const formattedLogs = logs.map((log, index) => ({
+          txHash: `${log.transactionHash.substring(0, 6)}...${log.transactionHash.substring(log.transactionHash.length - 4)}`,
+          fullHash: log.transactionHash,
+          ngo: `Campaign Partner #${index + 1}`,
+          purpose: "On-Chain Milestone Escrow",
+          claimed: "40,000",
+          status: "VERIFIED ON-CHAIN",
+          statusColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
+        }));
+
+        if (formattedLogs.length > 0) {
+          setLedgerTransactions(prev => [...formattedLogs, ...prev]);
+        }
+      } catch (error) {
+        console.error("Could not fetch real chain logs, keeping fallback state:", error);
+      }
+    };
+
+    fetchRealBlockchainLedger();
+  }, []);
 
   const handleMouseMove = (e) => {
     setMousePos({ x: e.clientX, y: e.clientY });
@@ -92,10 +127,12 @@ export default function App() {
       
       await tx.wait();
 
-      const simulatedHash = tx.hash ? `${tx.hash.substring(0, 6)}...${tx.hash.substring(tx.hash.length - 4)}` : "0x9df4...321";
+      const fullTxHash = tx.hash || "0x9df432109df432109df432109df432109df43210";
+      const shortHash = `${fullTxHash.substring(0, 6)}...${fullTxHash.substring(fullTxHash.length - 4)}`;
 
       const newTxEntry = {
-        txHash: simulatedHash,
+        txHash: shortHash,
+        fullHash: fullTxHash,
         ngo: "Smart Classroom Rural Haryana",
         purpose: "Verified Milestone Equipment",
         claimed: String(auditResult?.allocated_limit || 40000),
@@ -395,7 +432,7 @@ export default function App() {
                     </div>
                   ) : demoState === 'approved' ? (
                     <div className="p-4 bg-slate-900 rounded-xl border border-emerald-500 text-center font-mono text-sm text-emerald-400 font-bold">
-                      [OVERRIDE APPROVED]: ₹{auditResult.allocated_limit} DISBURSED VIA TX #0x9df4...321
+                      [OVERRIDE APPROVED]: ₹{auditResult.allocated_limit} DISBURSED VIA WEB3 TX
                     </div>
                   ) : demoState === 'submitting_tx' ? (
                     <div className="p-4 bg-slate-900 rounded-xl border border-cyan-500 text-center font-mono text-sm text-cyan-400 font-bold animate-pulse">
@@ -432,7 +469,7 @@ export default function App() {
                 <p className="text-sm text-slate-400">Cryptographically verified historical AI disbursements across global NGO partners.</p>
               </div>
               <div className="px-4 py-2 bg-slate-900 rounded-lg border border-slate-700 font-mono text-xs text-cyan-400">
-                Network: Polygon Mainnet
+                Network: Polygon Mainnet / Amoy Testnet
               </div>
             </div>
 
@@ -440,7 +477,7 @@ export default function App() {
               <table className="w-full text-left text-sm text-slate-300">
                 <thead className="text-xs text-slate-400 font-mono uppercase bg-slate-900/50 border-b border-slate-700">
                   <tr>
-                    <th className="px-6 py-4">Tx Hash</th>
+                    <th className="px-6 py-4">Tx Hash (PolygonScan)</th>
                     <th className="px-6 py-4">NGO Partner</th>
                     <th className="px-6 py-4">Purpose</th>
                     <th className="px-6 py-4">Claimed (₹)</th>
@@ -451,7 +488,11 @@ export default function App() {
                 <tbody className="divide-y divide-slate-800/50">
                   {ledgerTransactions.map((txItem, idx) => (
                     <tr key={idx} className="hover:bg-slate-800/30 transition">
-                      <td className="px-6 py-4 font-mono text-cyan-500">{txItem.txHash}</td>
+                      <td className="px-6 py-4 font-mono text-cyan-400 hover:underline cursor-pointer">
+                        <a href={`https://amoy.polygonscan.com/tx/${txItem.fullHash || '0x4f3a2b1c9a12'}`} target="_blank" rel="noopener noreferrer">
+                          {txItem.txHash}
+                        </a>
+                      </td>
                       <td className="px-6 py-4 font-bold text-white">{txItem.ngo}</td>
                       <td className="px-6 py-4">{txItem.purpose}</td>
                       <td className="px-6 py-4 font-bold text-slate-200">₹{txItem.claimed}</td>
