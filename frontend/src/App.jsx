@@ -31,6 +31,13 @@ export default function App() {
   const [aiStep, setAiStep] = useState(0);
   const [auditResult, setAuditResult] = useState(null);
 
+  const [ledgerTransactions, setLedgerTransactions] = useState([
+    { txHash: "0x4f...9a12", ngo: "Global Health Init.", purpose: "Vaccine Cold Storage", claimed: "2,50,000", status: "RELEASED", statusColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" },
+    { txHash: "0x7d...b38c", ngo: "EduCare Foundation", purpose: "Laptops for Teachers", claimed: "85,000", status: "BLOCKED", statusColor: "text-rose-400 bg-rose-500/10 border-rose-500/30" },
+    { txHash: "0x2a...1f44", ngo: "CleanWater Alliance", purpose: "Filtration Pumps", claimed: "1,20,000", status: "RELEASED", statusColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" },
+    { txHash: "0x9c...e771", ngo: "Disaster Relief Org", purpose: "Emergency Tents", claimed: "5,00,000", status: "MANUAL REVIEW", statusColor: "text-amber-400 bg-amber-500/10 border-amber-500/30" }
+  ]);
+
   const handleMouseMove = (e) => {
     setMousePos({ x: e.clientX, y: e.clientY });
   };
@@ -84,6 +91,19 @@ export default function App() {
       const tx = await contract.emergencyOverride(invoiceHashBytes);
       
       await tx.wait();
+
+      const simulatedHash = tx.hash ? `${tx.hash.substring(0, 6)}...${tx.hash.substring(tx.hash.length - 4)}` : "0x9df4...321";
+
+      const newTxEntry = {
+        txHash: simulatedHash,
+        ngo: "Smart Classroom Rural Haryana",
+        purpose: "Verified Milestone Equipment",
+        claimed: String(auditResult?.allocated_limit || 40000),
+        status: "OVERRIDDEN & RELEASED",
+        statusColor: "text-cyan-400 bg-cyan-500/10 border-cyan-500/30"
+      };
+
+      setLedgerTransactions(prev => [newTxEntry, ...prev]);
 
       setDemoState('approved');
       confetti({
@@ -429,54 +449,22 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
-                  <tr className="hover:bg-slate-800/30 transition">
-                    <td className="px-6 py-4 font-mono text-cyan-500">0x4f...9a12</td>
-                    <td className="px-6 py-4 font-bold text-white">Global Health Init.</td>
-                    <td className="px-6 py-4">Vaccine Cold Storage</td>
-                    <td className="px-6 py-4">2,50,000</td>
-                    <td className="px-6 py-4">
-                      <span className="text-emerald-400">98.5% Match</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/30 text-xs font-bold">RELEASED</span>
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-slate-800/30 transition">
-                    <td className="px-6 py-4 font-mono text-cyan-500">0x7d...b38c</td>
-                    <td className="px-6 py-4 font-bold text-white">EduCare Foundation</td>
-                    <td className="px-6 py-4">Laptops for Teachers</td>
-                    <td className="px-6 py-4 text-rose-400 font-bold">85,000</td>
-                    <td className="px-6 py-4">
-                      <span className="text-rose-400">Price Inflation Detected</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-rose-500/10 text-rose-400 rounded-full border border-rose-500/30 text-xs font-bold">BLOCKED</span>
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-slate-800/30 transition">
-                    <td className="px-6 py-4 font-mono text-cyan-500">0x2a...1f44</td>
-                    <td className="px-6 py-4 font-bold text-white">CleanWater Alliance</td>
-                    <td className="px-6 py-4">Filtration Pumps</td>
-                    <td className="px-6 py-4">1,20,000</td>
-                    <td className="px-6 py-4">
-                      <span className="text-emerald-400">99.1% Match</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/30 text-xs font-bold">RELEASED</span>
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-slate-800/30 transition">
-                    <td className="px-6 py-4 font-mono text-cyan-500">0x9c...e771</td>
-                    <td className="px-6 py-4 font-bold text-white">Disaster Relief Org</td>
-                    <td className="px-6 py-4">Emergency Tents</td>
-                    <td className="px-6 py-4">5,00,000</td>
-                    <td className="px-6 py-4">
-                      <span className="text-amber-400">Vendor Not Whitelisted</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/30 text-xs font-bold">MANUAL REVIEW</span>
-                    </td>
-                  </tr>
+                  {ledgerTransactions.map((txItem, idx) => (
+                    <tr key={idx} className="hover:bg-slate-800/30 transition">
+                      <td className="px-6 py-4 font-mono text-cyan-500">{txItem.txHash}</td>
+                      <td className="px-6 py-4 font-bold text-white">{txItem.ngo}</td>
+                      <td className="px-6 py-4">{txItem.purpose}</td>
+                      <td className="px-6 py-4 font-bold text-slate-200">₹{txItem.claimed}</td>
+                      <td className="px-6 py-4">
+                        <span className="text-emerald-400 font-mono text-xs">Polygon PoS Verified</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full border text-xs font-bold ${txItem.statusColor}`}>
+                          {txItem.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
